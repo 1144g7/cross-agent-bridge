@@ -1,0 +1,25 @@
+{
+  "agents": [
+    {
+      "id": "planner",
+      "name": "Planner",
+      "backend": "claude-code",
+      "role": "Plans tasks, reviews results",
+      "watch": ["results/", "inbox/planner.md"]
+    },
+    {
+      "id": "executor",
+      "name": "Executor",
+      "backend": "claude-code",
+      "role": "Executes tasks, submits results",
+      "watch": ["board/tasks.json", "inbox/executor.md"]
+    },
+    {
+      "id": "chronicler",
+      "name": "Chronicler",
+      "backend": "any",
+      "role": "Documents decisions and history",
+      "watch": ["results/", "inbox/chronicler.md"]
+    }
+  ]
+}

@@ -1,0 +1,23 @@
+{
+  "last_updated": "2026-04-17T10:00:00",
+  "tasks": [
+    {
+      "id": "T001",
+      "title": "Add user authentication",
+      "description": "Add login/logout endpoints to the API.\n\nAcceptance:\n- POST /login with {username, password} returns a JWT token\n- GET /me with Authorization header returns user info\n- Invalid credentials return 401\n- No changes to existing endpoints",
+      "assignee": "executor",
+      "created_by": "planner",
+      "created_at": "2026-04-17T10:00:00",
+      "tags": ["feature", "api"]
+    },
+    {
+      "id": "T002",
+      "title": "Write auth integration tests",
+      "description": "Test the auth endpoints added in T001.\n\nAcceptance:\n- Tests hit a real database (not mocks)\n- Cover: successful login, wrong password, expired token, /me without token\n- All tests pass",
+      "assignee": "executor",
+      "created_by": "planner",
+      "created_at": "2026-04-17T10:05:00",
+      "tags": ["test"]
+    }
+  ]
+}
