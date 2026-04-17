@@ -8,22 +8,19 @@
 
 <a id="english"></a>
 
-## It doesn't care what you use
+## NO code. NO MCP. NO complexity.
 
-- Doesn't care if you use **Claude / GPT / Gemini / Llama / Ollama**
-- Doesn't care if you use **Claude Code / Cursor / Windsurf / Aider / custom scripts**
-- Doesn't care if your agents are written in **Python / TypeScript / Bash / anything**
-- Doesn't care if your agents run on **different machines, different OSes, different networks**
+**NO code.** Pure text protocol. No `pip install`, no `npm install`, no SDK, no runtime. Copy the folder structure and go.
 
-**If it can read and write files, it can collaborate. Period.**
+**NO MCP.** No servers to start. No brokers, no bridges, no gateways, no middleware. The directory IS the infrastructure.
 
-## Three things. That's it.
+**NO complex protocols.** No shared memory, no message queues, no event buses, no orchestration layers. Read a file. Write a file. Done.
 
-| | |
-|---|---|
-| **A folder is all you need** | No server to start, no broker to configure, no middleware to maintain. `mkdir .agent-bridge` and you're running. |
-| **Any agent can join** | Claude Code, Cursor, Gemini CLI, GPT, Ollama, custom Python scripts -- mix and match freely. Different machines, different OSes, same collaboration. |
-| **Files are the protocol** | No SDK, no API, no runtime. Read a file, write a file. That's the entire interface. |
+## Just.
+
+Just a folder. Just files. Just read and write.
+
+Claude Code, Cursor, Gemini CLI, GPT, Ollama, custom Python scripts, Bash one-liners -- throw them all in. Different machines, different OSes, different networks. **If it can read and write files, it collaborates.**
 
 ## The pain it solves
 
@@ -193,22 +190,19 @@ MIT
 
 <a id="中文"></a>
 
-## 它不关心你用什么
+## NO 代码。NO MCP。NO 复杂协议。
 
-- 不关心你用 **Claude / GPT / Gemini / Llama / Ollama**
-- 不关心你用 **Claude Code / Cursor / Windsurf / Aider / 自定义脚本**
-- 不关心你的 Agent 用 **Python / TypeScript / Bash / 任何语言** 写的
-- 不关心你的 Agent 跑在 **不同的机器、不同的系统、不同的网络**
+**NO 代码。** 纯文本协议。没有 `pip install`，没有 `npm install`，没有 SDK，没有运行时。复制目录结构就能跑。
 
-**只要能读写文件，就能协作。就这样。**
+**NO MCP。** 不用起服务。没有 broker，没有 gateway，没有中间件。目录就是基础设施。
 
-## 三件事。就这样。
+**NO 复杂协议。** 没有共享内存，没有消息队列，没有事件总线，没有编排层。读文件。写文件。完了。
 
-| | |
-|---|---|
-| **一个文件夹就够了** | 不用起服务，不用配中间件。`mkdir .agent-bridge`，跑起来了。 |
-| **任何 Agent 都能加入** | Claude Code、Cursor、Gemini CLI、GPT、Ollama、自定义脚本——随便混搭。不同机器、不同系统，同一个协作。 |
-| **文件就是协议** | 没有 SDK，没有 API，没有运行时。读一个文件，写一个文件。这就是全部接口。 |
+## 就这样。
+
+就一个文件夹。就几个文件。就读和写。
+
+Claude Code、Cursor、Gemini CLI、GPT、Ollama、自定义 Python 脚本、Bash 一行命令——全扔进来。不同机器、不同系统、不同网络。**能读写文件就能协作。**
 
 ## 解决什么痛点
 
