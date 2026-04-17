@@ -47,7 +47,7 @@ Claude Code (planner)          Cursor (executor)          Python script (tester)
 .agent-bridge/
 ├── board/tasks.json       ← Active tasks only (planner writes)
 ├── board/archive.json     ← Completed tasks (executor archives)
-├── results/T001.json      ← Executor writes results (one file per task)
+├── results.json           ← All active results in one file
 ├── inbox/planner.md       ← Direct messages (append-only)
 ├── inbox/executor.md
 ├── chat.md                ← Group chat (rolling window, last 30)
@@ -175,7 +175,7 @@ cross-agent-bridge/
     ├── chat.md            ← Sample group chat
     ├── config/agents.json ← Sample agent registration
     ├── inbox/             ← Sample inboxes
-    ├── results/           ← Sample result file
+    ├── results.json       ← Sample results
     └── chronicles/        ← Sample daily records
 ```
 
@@ -226,7 +226,7 @@ Claude Code (规划者)          Cursor (执行者)          Python 脚本 (测�
 .agent-bridge/
 ├── board/tasks.json       ← 只有活跃任务（规划者写）
 ├── board/archive.json     ← 已完成任务（执行者归档）
-├── results/T001.json      ← 执行者写结果（每个任务一个文件）
+├── results.json           ← 所有活跃结果在一个文件里
 ├── inbox/planner.md       ← 私信（只追加）
 ├── inbox/executor.md
 ├── chat.md                ← 群聊（滚动窗口，最近30条）
@@ -354,7 +354,7 @@ cross-agent-bridge/
     ├── chat.md            ← 示例群聊
     ├── config/agents.json ← 示例注册
     ├── inbox/             ← 示例收件箱
-    ├── results/           ← 示例结果
+    ├── results.json       ← 示例结果
     └── chronicles/        ← 示例编年史
 ```
 

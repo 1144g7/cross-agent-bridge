@@ -1,4 +1,4 @@
-# Agent Bridge Protocol v0.7
+# Agent Bridge Protocol v0.8
 
 > File-as-message, write-as-push, poll-as-trigger.
 > Any system that can read and write files can participate.
@@ -12,8 +12,7 @@
 ├── board/
 │   ├── tasks.json       ← Active tasks only (planner writes, others read)
 │   └── archive.json     ← Completed/failed tasks (executor maintains)
-├── results/
-│   └── {task_id}.json   ← One result file per task (executor writes)
+├── results.json         ← All active results in one file (executor writes)
 ├── inbox/
 │   └── {agent_id}.md    ← Per-agent inbox (append-only)
 ├── materials/
@@ -88,52 +87,52 @@ The `backend` field is informational only. The protocol does not care what syste
 }
 ```
 
-There is no `status` field. Task state is determined by result files:
-- `results/T001.json` does not exist --> pending
-- `results/T001.json` exists with `"status": "completed"` --> done
-- `results/T001.json` exists with `"status": "failed"` --> error (check `error` field)
-- `results/T001.json` exists with `"status": "blocked"` --> blocked (check `reason` field)
-- `results/T001.json` exists with `"status": "rejected"` --> refused (check `reason` + `suggestion`)
+There is no `status` field. Task state is determined by `results.json`:
+- Task ID not found in results.json --> pending
+- Task ID found with `"status": "completed"` --> done
+- Task ID found with `"status": "failed"` --> error (check `error` field)
+- Task ID found with `"status": "blocked"` --> blocked (check `reason` field)
+- Task ID found with `"status": "rejected"` --> refused (check `reason` + `suggestion`)
 
-### results/{task_id}.json (executor writes)
+### results.json (executor writes, one file for all)
 
-**Completed:**
+All results in a single file. One read to see everything.
+
 ```json
 {
-  "task_id": "T001",
-  "status": "completed",
-  "summary": "What was done",
-  "deliverables": ["path/to/file1", "path/to/file2"],
-  "issues": [],
-  "completed_by": "executor",
-  "completed_at": "2026-04-17T10:30:00"
+  "last_updated": "2026-04-17T10:40:00",
+  "results": [
+    {
+      "task_id": "T001",
+      "status": "completed",
+      "summary": "Added JWT auth with login/logout/me endpoints",
+      "deliverables": ["api/auth.py", "api/middleware.py"],
+      "issues": [],
+      "completed_by": "executor",
+      "completed_at": "2026-04-17T10:30:00"
+    },
+    {
+      "task_id": "T002",
+      "status": "failed",
+      "error": "Database migration failed: column already exists",
+      "completed_by": "executor",
+      "completed_at": "2026-04-17T10:35:00"
+    },
+    {
+      "task_id": "T003",
+      "status": "rejected",
+      "reason": "Task requires access to production database",
+      "suggestion": "Provide a staging environment or mock data",
+      "completed_by": "executor",
+      "completed_at": "2026-04-17T10:40:00"
+    }
+  ]
 }
 ```
 
-**Failed:**
-```json
-{
-  "task_id": "T002",
-  "status": "failed",
-  "error": "What went wrong",
-  "completed_by": "executor",
-  "completed_at": "2026-04-17T10:35:00"
-}
-```
+**Writing convention**: The executor appends their result to the `results` array. They never modify existing entries. If multiple executors exist, they coordinate through their normal workflow (one writes, others wait).
 
-**Rejected:**
-```json
-{
-  "task_id": "T003",
-  "status": "rejected",
-  "reason": "Why the task cannot be completed as specified",
-  "suggestion": "What to do instead",
-  "completed_by": "executor",
-  "completed_at": "2026-04-17T10:40:00"
-}
-```
-
-When rejecting, the executor MUST also leave a message in the planner's inbox (`inbox/planner.md`) explaining the rejection. The planner can then revise the task (delete the old result, update the task) and re-issue it.
+When rejecting, the executor MUST also leave a message in the planner's inbox (`inbox/planner.md`) explaining the rejection. The planner can then revise the task and re-issue it.
 
 ### inbox/{agent_id}.md (append-only)
 
@@ -157,26 +156,27 @@ Same format as inbox. Any agent can append.
 
 ### Task Archiving
 
-`tasks.json` only holds **active** tasks (tasks without result files). Completed, failed, or rejected tasks are moved to `board/archive.json` to keep the active board lean.
+`tasks.json` only holds **active** tasks. `results.json` only holds **recent** results. When a task is archived, it moves out of both files into `board/archive.json`.
 
-**When to archive**: After the executor writes a result file (`results/{task_id}.json`), they check if `tasks.json` has more than a threshold (default: 10) tasks with existing results. If so, they move those tasks to `board/archive.json` and remove them from `tasks.json`.
+**When to archive**: After the executor writes a result, they check if `tasks.json` + `results.json` exceed ~10 entries. If so, they move completed items to `board/archive.json` and remove them from both files.
 
-**archive.json format**:
+**archive.json format** (includes result summaries so nothing is lost):
 ```json
 {
   "last_updated": "2026-04-17T11:00:00",
-  "archived_tasks": [
+  "archived": [
     {
       "id": "T001",
-      "title": "Completed task",
-      "result_status": "completed",
+      "title": "Add user authentication",
+      "status": "completed",
+      "summary": "Added JWT auth with login/logout/me endpoints",
+      "completed_by": "executor",
+      "completed_at": "2026-04-17T10:30:00",
       "archived_at": "2026-04-17T11:00:00"
     }
   ]
 }
 ```
-
-Only `id`, `title`, `result_status`, and `archived_at` are needed in the archive. Full details live in `results/{task_id}.json`.
 
 **Who maintains it**: The executor, as part of the result-submission workflow. The planner can also trigger a cleanup.
 
@@ -211,10 +211,10 @@ Inboxes grow without bound by design -- they're the agent's personal log. If an 
 ### Executor
 
 1. Read `board/tasks.json`, find tasks assigned to you
-2. Skip tasks that already have `results/{task_id}.json`
+2. Check `results.json` -- skip tasks that already have a result entry
 3. Execute the task
-4. Write `results/{task_id}.json`
-5. Archive completed tasks from `tasks.json` to `board/archive.json` when the active board exceeds ~10 items
+4. Append your result to `results.json`
+5. Archive old tasks/results to `board/archive.json` when active items exceed ~10
 6. If stuck, write `inbox/planner.md`
 
 ### Chronicler
@@ -302,3 +302,4 @@ Agents sync on next `/check`.
 - v0.5 -- Added task description discipline (5 rules)
 - v0.6 -- Added three-layer separation (3 rules)
 - v0.7 -- Added housekeeping: task archiving, chat rolling window, inbox pruning
+- v0.8 -- Results consolidated to single results.json (one read, not N)
