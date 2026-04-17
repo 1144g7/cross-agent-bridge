@@ -60,47 +60,42 @@ No status field in tasks.json. A task is pending if its result file doesn't exis
 
 ## Quick Start
 
+### You (the human) do 3 things:
+
+**1. Create the bridge**
 ```bash
-# 1. Create the bridge
 mkdir -p .agent-bridge/{board,results,inbox,chronicles,config,materials}
-
-# 2. Copy the example setup
-# (or see example/ in this repo for a ready-to-use template)
 ```
 
-Then tell your agents where `.agent-bridge/` is. That's it.
+**2. Tell each agent who's who**
 
-For a complete working example, see the [`example/`](example/) directory.
+Copy role templates into each agent's system. How depends on the framework:
 
-## For AI Agents: Installation Guide
+| Framework | How |
+|-----------|-----|
+| Claude Code | Copy `agents/planner.md` to `.claude/commands/planner.md`, etc. |
+| Cursor / Windsurf | Put the template content in `.cursorrules` or your project rules file |
+| Gemini CLI | Add to your `GEMINI.md` or system prompt |
+| Custom scripts | Just read the template file and include it in the system prompt |
+| Any AI with file access | Paste the template into its context and say "follow this" |
 
-This protocol is designed for AI agents to self-install. Here's how to set it up in different systems:
+Each agent template (`agents/*.md`) includes everything the AI needs to know.
 
-### Claude Code
+**3. Tell them to check**
 
-Create agent skills (commands) so Claude can act as planner or executor:
+Type `/check` (or your trigger command) in any agent to start. From there, agents self-coordinate through files.
 
-```bash
-# Create the commands directory if it doesn't exist
-mkdir -p .claude/commands
+That's it. You don't write tasks, you don't review results, you don't run anything. The agents do all of that through the bridge.
 
-# Copy the agent template as a slash command
-cp agents/planner.md .claude/commands/planner.md
-cp agents/executor.md .claude/commands/executor.md
-```
+### Agent self-setup
 
-Now type `/planner` or `/executor` in Claude Code to activate the role.
+Agents read the protocol and templates themselves. When an agent starts:
+1. It reads `.agent-bridge/PROTOCOL.md` for the rules
+2. It reads `.agent-bridge/config/agents.json` to see who's registered
+3. It reads its role template (`agents/{role}.md`) for instructions
+4. It starts working
 
-### Any AI with file access
-
-Give your AI agent these instructions (paste into its system prompt or context):
-
-1. Read `.agent-bridge/PROTOCOL.md` for the full protocol
-2. Read `.agent-bridge/config/agents.json` to see who's registered
-3. Read your assigned role template from `agents/{role}.md`
-4. Start working: read tasks, execute, write results
-
-That's all the setup needed. No installation, no configuration wizard.
+No wizard, no configuration, no onboarding flow. Files are the documentation.
 
 ### Adding a new agent type
 
@@ -244,44 +239,42 @@ tasks.json 里没有 status 字段。结果文件不存在 = 进行中，存在 
 
 ## 快速开始
 
+### 你（人类）只做 3 件事：
+
+**1. 建桥接目录**
 ```bash
-# 1. 创建桥接目录
 mkdir -p .agent-bridge/{board,results,inbox,chronicles,config,materials}
-
-# 2. 复制示例配置
-# （或者直接看本仓库的 example/ 目录）
 ```
 
-然后告诉你的 Agent `.agent-bridge/` 在哪。完了。
+**2. 告诉每个 Agent 它是谁**
 
-完整示例见 [`example/`](example/) 目录。
+把角色模板复制到每个 Agent 的系统里。方法取决于框架：
 
-## 给 AI Agent 的安装指南
+| 框架 | 方法 |
+|------|------|
+| Claude Code | 把 `agents/planner.md` 复制到 `.claude/commands/planner.md`，以此类推 |
+| Cursor / Windsurf | 放到 `.cursorrules` 或项目规则文件里 |
+| Gemini CLI | 加到 `GEMINI.md` 或系统提示词 |
+| 自定义脚本 | 读模板文件，塞进系统提示词 |
+| 任何能读文件的 AI | 把模板粘贴到它的上下文里，说"照着做" |
 
-这个协议设计给 AI Agent 自行安装。不同系统的设置方式：
+每个角色模板（`agents/*.md`）已经包含了 AI 需要知道的一切。
 
-### Claude Code
+**3. 叫它们检查**
 
-创建 slash command，让 Claude 扮演规划者或执行者：
+在任何 Agent 里输入 `/check`（或你的触发命令）。之后 Agent 们通过文件自行协调。
 
-```bash
-mkdir -p .claude/commands
-cp agents/planner.md .claude/commands/planner.md
-cp agents/executor.md .claude/commands/executor.md
-```
+就这样。你不用写任务、不用审结果、不用跑任何东西。Agent 们通过桥接目录自己搞定。
 
-然后在 Claude Code 里输入 `/planner` 或 `/executor` 即可激活角色。
+### Agent 自行设置
 
-### 任何有文件访问能力的 AI
-
-把以下指令粘贴到 AI 的系统提示词或上下文里：
-
-1. 读 `.agent-bridge/PROTOCOL.md` 了解完整协议
+Agent 自己读协议和模板。当一个 Agent 启动时：
+1. 读 `.agent-bridge/PROTOCOL.md` 了解规则
 2. 读 `.agent-bridge/config/agents.json` 看谁已注册
-3. 读对应角色模板 `agents/{角色}.md`
-4. 开始工作：读任务、执行、写结果
+3. 读角色模板（`agents/{角色}.md`）了解自己的职责
+4. 开始工作
 
-这就是全部设置。没有安装向导，没有配置界面。
+没有安装向导，没有配置界面。文件就是文档。
 
 ### 添加新的 Agent 类型
 
