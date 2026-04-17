@@ -17,13 +17,13 @@
 
 **If it can read and write files, it can collaborate. Period.**
 
-## Three big NOs
+## Three things. That's it.
 
 | | |
 |---|---|
-| **NO server** | No MCP server, no AgentGateway, no broker. Just a directory. |
-| **NO framework** | No LangChain, no CrewAI, no AutoGen. Zero dependencies. |
-| **NO code** | This is a pure text protocol. No installation, no `pip install`, no `npm install`. Just copy the directory structure and go. |
+| **A folder is all you need** | No server to start, no broker to configure, no middleware to maintain. `mkdir .agent-bridge` and you're running. |
+| **Any agent can join** | Claude Code, Cursor, Gemini CLI, GPT, Ollama, custom Python scripts -- mix and match freely. Different machines, different OSes, same collaboration. |
+| **Files are the protocol** | No SDK, no API, no runtime. Read a file, write a file. That's the entire interface. |
 
 ## The pain it solves
 
@@ -160,9 +160,9 @@ Full details in [PROTOCOL.md](PROTOCOL.md).
 | | Cross Agent Bridge | MCP | LangGraph | Manual |
 |---|---|---|---|---|
 | Setup | `mkdir` | Install + run server | Install + framework | None |
-| Dependencies | **Zero** | Python/JS server | Python + LangGraph | None |
-| Cross-framework | **Any** | Same process | Same framework | Copy-paste |
-| AI tool A + AI tool B | **Works** | Need shared server | Need shared code | Pain |
+| Dependencies | None | Python/JS server | Python + LangGraph | None |
+| Cross-framework | Any | Same process | Same framework | Copy-paste |
+| AI tool A + tool B | Works | Need shared server | Need shared code | Pain |
 | Audit trail | Built-in (files) | Custom | Checkpointing | Chat history |
 
 ## Directory contents
@@ -202,13 +202,13 @@ MIT
 
 **只要能读写文件，就能协作。就这样。**
 
-## 三个大 NO
+## 三件事。就这样。
 
 | | |
 |---|---|
-| **NO 服务器** | 不需要 MCP Server，不需要 AgentGateway，不需要任何中间件。只要一个目录。 |
-| **NO 框架** | 不需要 LangChain、CrewAI、AutoGen。零依赖。 |
-| **NO 代码** | 纯文本协议。没有安装步骤，没有 `pip install`，没有 `npm install`。照着目录结构建文件夹就行。 |
+| **一个文件夹就够了** | 不用起服务，不用配中间件。`mkdir .agent-bridge`，跑起来了。 |
+| **任何 Agent 都能加入** | Claude Code、Cursor、Gemini CLI、GPT、Ollama、自定义脚本——随便混搭。不同机器、不同系统，同一个协作。 |
+| **文件就是协议** | 没有 SDK，没有 API，没有运行时。读一个文件，写一个文件。这就是全部接口。 |
 
 ## 解决什么痛点
 
@@ -342,9 +342,9 @@ Claude Code（规划者）拆分功能 → Cursor（执行者）写代码 → Ge
 | | Cross Agent Bridge | MCP | LangGraph | 手动 |
 |---|---|---|---|---|
 | 安装 | `mkdir` | 装依赖 + 起服务 | 装框架 + 配置 | 无 |
-| 依赖 | **零** | Python/JS 服务 | Python + LangGraph | 无 |
-| 跨框架 | **任意** | 同进程 | 同框架 | 复制粘贴 |
-| 工具 A + 工具 B | **直接协作** | 需要共享服务器 | 需要共享代码 | 痛苦 |
+| 依赖 | 无 | Python/JS 服务 | Python + LangGraph | 无 |
+| 跨框架 | 任意 | 同进程 | 同框架 | 复制粘贴 |
+| 工具 A + 工具 B | 直接协作 | 需要共享服务器 | 需要共享代码 | 痛苦 |
 | 审计追踪 | 内置（文件即日志） | 自定义 | Checkpoint | 聊天记录 |
 
 ## 目录内容
