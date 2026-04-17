@@ -1,4 +1,4 @@
-# Agent Bridge Protocol v0.6
+# Agent Bridge Protocol v0.7
 
 > File-as-message, write-as-push, poll-as-trigger.
 > Any system that can read and write files can participate.
@@ -8,9 +8,10 @@
 ```
 .agent-bridge/
 ├── PROTOCOL.md          ← This file
-├── chat.md              ← Group chat (any agent may append)
+├── chat.md              ← Group chat (any agent may append, rolling window)
 ├── board/
-│   └── tasks.json       ← Task board (planner writes, others read)
+│   ├── tasks.json       ← Active tasks only (planner writes, others read)
+│   └── archive.json     ← Completed/failed tasks (executor maintains)
 ├── results/
 │   └── {task_id}.json   ← One result file per task (executor writes)
 ├── inbox/
@@ -146,9 +147,46 @@ Message content here.
 Reply content here.
 ```
 
-### chat.md (append-only)
+### chat.md (append-only, rolling window)
 
 Same format as inbox. Any agent can append.
+
+**Rolling window**: Keep the last 30 entries in `chat.md`. When it exceeds 30, the executor (or any agent doing cleanup) moves older entries to `chronicles/chat-archive-{YYYY-MM-DD}.md` and trims `chat.md` to the most recent 30. This keeps chat readable without losing history.
+
+## Housekeeping
+
+### Task Archiving
+
+`tasks.json` only holds **active** tasks (tasks without result files). Completed, failed, or rejected tasks are moved to `board/archive.json` to keep the active board lean.
+
+**When to archive**: After the executor writes a result file (`results/{task_id}.json`), they check if `tasks.json` has more than a threshold (default: 10) tasks with existing results. If so, they move those tasks to `board/archive.json` and remove them from `tasks.json`.
+
+**archive.json format**:
+```json
+{
+  "last_updated": "2026-04-17T11:00:00",
+  "archived_tasks": [
+    {
+      "id": "T001",
+      "title": "Completed task",
+      "result_status": "completed",
+      "archived_at": "2026-04-17T11:00:00"
+    }
+  ]
+}
+```
+
+Only `id`, `title`, `result_status`, and `archived_at` are needed in the archive. Full details live in `results/{task_id}.json`.
+
+**Who maintains it**: The executor, as part of the result-submission workflow. The planner can also trigger a cleanup.
+
+### Chat Trimming
+
+Same principle: keep chat.md under 30 entries. Older entries go to `chronicles/chat-archive-{YYYY-MM-DD}.md`.
+
+### Inbox Pruning
+
+Inboxes grow without bound by design -- they're the agent's personal log. If an inbox gets too large (>100 entries), the agent can self-prune by moving old entries to chronicles.
 
 ## Workflows
 
@@ -176,7 +214,8 @@ Same format as inbox. Any agent can append.
 2. Skip tasks that already have `results/{task_id}.json`
 3. Execute the task
 4. Write `results/{task_id}.json`
-5. If stuck, write `inbox/planner.md`
+5. Archive completed tasks from `tasks.json` to `board/archive.json` when the active board exceeds ~10 items
+6. If stuck, write `inbox/planner.md`
 
 ### Chronicler
 
@@ -262,3 +301,4 @@ Agents sync on next `/check`.
 - v0.4 -- Added autonomy principle, rejected status, update notification
 - v0.5 -- Added task description discipline (5 rules)
 - v0.6 -- Added three-layer separation (3 rules)
+- v0.7 -- Added housekeeping: task archiving, chat rolling window, inbox pruning

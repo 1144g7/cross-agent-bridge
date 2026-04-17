@@ -45,11 +45,12 @@ Claude Code (planner)          Cursor (executor)          Python script (tester)
 
 ```
 .agent-bridge/
-├── board/tasks.json       ← Planner writes tasks here
+├── board/tasks.json       ← Active tasks only (planner writes)
+├── board/archive.json     ← Completed tasks (executor archives)
 ├── results/T001.json      ← Executor writes results (one file per task)
 ├── inbox/planner.md       ← Direct messages (append-only)
 ├── inbox/executor.md
-├── chat.md                ← Group chat (append-only)
+├── chat.md                ← Group chat (rolling window, last 30)
 └── config/agents.json     ← Who's who
 ```
 
@@ -174,7 +175,8 @@ cross-agent-bridge/
 │   ├── executor.md        ← Executor role template
 │   └── chronicler.md      ← Chronicler role template (optional)
 └── example/
-    ├── board/tasks.json   ← Sample tasks
+    ├── board/tasks.json   ← Sample active tasks
+    ├── board/archive.json ← Sample archive
     ├── chat.md            ← Sample group chat
     ├── config/agents.json ← Sample agent registration
     ├── inbox/             ← Sample inboxes
@@ -227,11 +229,12 @@ Claude Code (规划者)          Cursor (执行者)          Python 脚本 (测�
 
 ```
 .agent-bridge/
-├── board/tasks.json       ← 规划者在这里写任务
+├── board/tasks.json       ← 只有活跃任务（规划者写）
+├── board/archive.json     ← 已完成任务（执行者归档）
 ├── results/T001.json      ← 执行者写结果（每个任务一个文件）
 ├── inbox/planner.md       ← 私信（只追加）
 ├── inbox/executor.md
-├── chat.md                ← 群聊（只追加）
+├── chat.md                ← 群聊（滚动窗口，最近30条）
 └── config/agents.json     ← 谁是谁
 ```
 
@@ -353,7 +356,8 @@ cross-agent-bridge/
 │   ├── executor.md        ← 执行者角色模板
 │   └── chronicler.md      ← 史官角色模板（可选）
 └── example/
-    ├── board/tasks.json   ← 示例任务
+    ├── board/tasks.json   ← 示例活跃任务
+    ├── board/archive.json ← 示例归档
     ├── chat.md            ← 示例群聊
     ├── config/agents.json ← 示例注册
     ├── inbox/             ← 示例收件箱
