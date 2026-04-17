@@ -28,7 +28,7 @@
 
 1. **One file, one writer at a time** -- avoid concurrent writes to the same file
 2. **tasks.json is planner-only** -- others read but never write
-3. **results/{task_id}.json is executor-only** -- naturally isolated, no conflicts
+3. **results.json is executor-only** -- executor appends, others read
 4. **inbox/ is append-only** -- never modify or delete existing content
 5. **chat.md is append-only** -- same rule
 
@@ -44,7 +44,7 @@ Agents self-register in `config/agents.json`:
       "name": "Planner",
       "backend": "claude-code",
       "role": "Plans tasks, reviews results",
-      "watch": ["results/", "inbox/planner.md"]
+      "watch": ["results.json", "inbox/planner.md"]
     },
     {
       "id": "executor",
@@ -58,7 +58,7 @@ Agents self-register in `config/agents.json`:
       "name": "Chronicler",
       "backend": "any",
       "role": "Documents decisions and history",
-      "watch": ["results/", "inbox/chronicler.md"]
+      "watch": ["results.json", "inbox/chronicler.md"]
     }
   ]
 }
@@ -203,7 +203,7 @@ Inboxes grow without bound by design -- they're the agent's personal log. If an 
 
 ### Planner
 
-1. Read `results/` to see completed work
+1. Read `results.json` to see completed work
 2. Read `inbox/planner.md` for requests and issues
 3. Write tasks to `board/tasks.json`
 4. Review results and issue follow-up tasks
@@ -219,7 +219,7 @@ Inboxes grow without bound by design -- they're the agent's personal log. If an 
 
 ### Chronicler
 
-1. Read `results/` to understand latest work
+1. Read `results.json` to understand latest work
 2. Read `inbox/chronicler.md` for recording requests
 3. Write daily records to `chronicles/YYYY-MM-DD.md`
 
