@@ -1,305 +1,221 @@
-# Agent Bridge Protocol v0.8
+# 跨 Agent 协作协议 v0.9.2
 
-> File-as-message, write-as-push, poll-as-trigger.
-> Any system that can read and write files can participate.
+> 文件即通信，任务即指令。没有闲聊，没有私信，没有广播栏。
 
-## Directory Structure
+## 设计哲学
+
+所有通信都是任务。Agent 之间只通过"派活 / 交活"协作。
+
+- 指向性通过任务的 `assignee` 字段表达
+- 广播通过 `assignee: "all"` 表达
+- 拒绝 / 阻塞通过 result 的 `status` 字段表达
+- 协议升级通过直接改 `PROTOCOL.md` 实现，其他 agent 下次 `/check` 自然读到
+
+## 目录结构
 
 ```
 .agent-bridge/
-├── PROTOCOL.md          ← This file
-├── chat.md              ← Group chat (any agent may append, rolling window)
+├── PROTOCOL.md          ← 本文件
 ├── board/
-│   ├── tasks.json       ← Active tasks only (planner writes, others read)
-│   └── archive.json     ← Completed/failed tasks (executor maintains)
-├── results.json         ← All active results in one file (executor writes)
-├── inbox/
-│   └── {agent_id}.md    ← Per-agent inbox (append-only)
+│   ├── tasks.json       ← 活跃任务（规划者写）
+│   └── archive.json     ← 归档任务索引（规划者维护）
+├── results/
+│   └── {id}.json        ← 任务结果（执行者写）
+│   └── {id}-{agent}.json ← 广播任务的多人回应
 ├── materials/
-│   └── {task_id}/       ← Task-related materials (prompts, data, rubrics)
-├── chronicles/
-│   ├── YYYY-MM-DD.md    ← Daily records (chronicler writes)
-│   └── INDEX.md         ← Chronicle index
-└── config/
-    └── agents.json      ← Agent registry
+│   └── {task_id}/       ← 任务素材（复杂输入放这里）
+├── chronicles/          ← 史官写的历史（非通信）
+│   ├── YYYY-MM-DD.md
+│   ├── INDEX.md
+│   └── legacy/          ← v0.9 之前的历史归档
+└── archive/             ← 超阈值后归档的完整 result 内容
 ```
 
-## Core Rules
+## 核心规则
 
-1. **One file, one writer at a time** -- avoid concurrent writes to the same file
-2. **tasks.json is planner-only** -- others read but never write
-3. **results.json is executor-only** -- executor appends, others read
-4. **inbox/ is append-only** -- never modify or delete existing content
-5. **chat.md is append-only** -- same rule
+1. **tasks.json 只由规划者写**，其他人只读
+2. **results/{id}.json 由执行者写**，每任务一文件，天然隔离
+3. **结果文件不修改**——只新增或归档，不覆盖
+4. **没有 chat.md、没有 inbox、没有 agents.json**——通信全走任务
 
-## Agent Registry
+## 任务格式
 
-Agents self-register in `config/agents.json`:
+### tasks.json（规划者写）
 
 ```json
 {
-  "agents": [
-    {
-      "id": "planner",
-      "name": "Planner",
-      "backend": "claude-code",
-      "role": "Plans tasks, reviews results",
-      "watch": ["results.json", "inbox/planner.md"]
-    },
-    {
-      "id": "executor",
-      "name": "Executor",
-      "backend": "claude-code",
-      "role": "Executes tasks, submits results",
-      "watch": ["board/tasks.json", "inbox/executor.md"]
-    },
-    {
-      "id": "chronicler",
-      "name": "Chronicler",
-      "backend": "any",
-      "role": "Documents decisions and history",
-      "watch": ["results.json", "inbox/chronicler.md"]
-    }
-  ]
-}
-```
-
-The `backend` field is informational only. The protocol does not care what system an agent runs on.
-
-## Task Format
-
-### tasks.json (planner writes)
-
-```json
-{
-  "last_updated": "2026-04-17T10:00:00",
+  "last_updated": "2026-04-17T23:40:00",
   "tasks": [
     {
-      "id": "T001",
-      "title": "One-line title",
-      "description": "What is needed and how to verify",
+      "id": "T026",
+      "title": "一句话标题",
+      "description": "需求 + 验收标准",
       "assignee": "executor",
       "created_by": "planner",
-      "created_at": "2026-04-17T10:00:00",
-      "tags": ["feature"]
+      "created_at": "2026-04-17T23:40:00",
+      "tags": []
     }
   ]
 }
 ```
 
-There is no `status` field. Task state is determined by `results.json`:
-- Task ID not found in results.json --> pending
-- Task ID found with `"status": "completed"` --> done
-- Task ID found with `"status": "failed"` --> error (check `error` field)
-- Task ID found with `"status": "blocked"` --> blocked (check `reason` field)
-- Task ID found with `"status": "rejected"` --> refused (check `reason` + `suggestion`)
+**assignee 可选值**：
+- 具体 agent 名（`"executor"` / `"executor-1"` / `"chronicler"` / `"planner"`）
+- `"all"` — 广播，所有 agent 都要处理
+- 多身份 executor 由人类指派（"你是 executor-2"），协议不自动分配
 
-### results.json (executor writes, one file for all)
+**没有 status 字段**。任务状态靠 result 文件存在与否隐式表达。
 
-All results in a single file. One read to see everything.
+### results/{id}.json（执行者写）
 
 ```json
 {
-  "last_updated": "2026-04-17T10:40:00",
-  "results": [
-    {
-      "task_id": "T001",
-      "status": "completed",
-      "summary": "Added JWT auth with login/logout/me endpoints",
-      "deliverables": ["api/auth.py", "api/middleware.py"],
-      "issues": [],
-      "completed_by": "executor",
-      "completed_at": "2026-04-17T10:30:00"
-    },
-    {
-      "task_id": "T002",
-      "status": "failed",
-      "error": "Database migration failed: column already exists",
-      "completed_by": "executor",
-      "completed_at": "2026-04-17T10:35:00"
-    },
-    {
-      "task_id": "T003",
-      "status": "rejected",
-      "reason": "Task requires access to production database",
-      "suggestion": "Provide a staging environment or mock data",
-      "completed_by": "executor",
-      "completed_at": "2026-04-17T10:40:00"
-    }
-  ]
+  "task_id": "T026",
+  "status": "completed",
+  "summary": "做了什么",
+  "deliverables": ["文件路径"],
+  "issues": [],
+  "completed_by": "executor",
+  "completed_at": "2026-04-17T23:50:00"
 }
 ```
 
-**Writing convention**: The executor appends their result to the `results` array. They never modify existing entries. If multiple executors exist, they coordinate through their normal workflow (one writes, others wait).
+**status 取值**：
 
-When rejecting, the executor MUST also leave a message in the planner's inbox (`inbox/planner.md`) explaining the rejection. The planner can then revise the task and re-issue it.
+| status | 含义 | 必须带的字段 |
+|---|---|---|
+| `completed` | 完成 | `summary` / `deliverables` |
+| `rejected` | 拒绝（任务不合理/需要澄清） | `reason` + `suggestion` |
+| `blocked` | 阻塞（做到一半缺条件） | `reason` |
+| `failed` | 执行失败（出错） | `error` |
 
-### inbox/{agent_id}.md (append-only)
+**拒绝或阻塞时不需要另外发消息。** 规划者 `/check` 时扫 results/，看到 rejected/blocked 的 result 会读 reason 处理。
 
-```markdown
-# Agent Inbox
+### 广播任务的结果
 
-## 2026-04-17 10:00 @planner
-Message content here.
-
-## 2026-04-17 10:05 @executor
-Reply content here.
+任务 `assignee: "all"` 时，每个 agent 各自写 `results/{id}-{agent}.json`：
+```
+results/T027-planner.json
+results/T027-executor.json
+results/T027-chronicler.json
 ```
 
-### chat.md (append-only, rolling window)
+规划者通过扫 results/ 目录判断所有人是否都回应了。
 
-Same format as inbox. Any agent can append.
+## 任务状态判断
 
-**Rolling window**: Keep the last 30 entries in `chat.md`. When it exceeds 30, the executor (or any agent doing cleanup) moves older entries to `chronicles/chat-archive-{YYYY-MM-DD}.md` and trims `chat.md` to the most recent 30. This keeps chat readable without losing history.
+| results/{id}.json | 含义 |
+|---|---|
+| 不存在 | pending（还没做） |
+| status=completed | 完成 |
+| status=rejected | 拒绝，看 reason/suggestion 决定改任务或撤销 |
+| status=blocked | 阻塞，看 reason 决定补素材或发澄清任务 |
+| status=failed | 执行失败，看 error |
 
-## Housekeeping
+## 归档机制
 
-### Task Archiving
+**归档是规划者的活**（规划者有全局视野）。
 
-`tasks.json` only holds **active** tasks. `results.json` only holds **recent** results. When a task is archived, it moves out of both files into `board/archive.json`.
+**触发**：规划者 `/check` 时发现 `tasks.json` + `results/` 合计活跃条目 > 15，顺手归档。
 
-**When to archive**: After the executor writes a result, they check if `tasks.json` + `results.json` exceed ~10 entries. If so, they move completed items to `board/archive.json` and remove them from both files.
+**归档动作**：
+1. 挑完成/拒绝/失败/阻塞已处理的条目
+2. 完整 result body 追加到 `archive/results-YYYY-MM.json`
+3. 标题索引追加到 `board/archive.json`
+4. 从 `tasks.json` 和 `results/` 中删除这些条目
 
-**archive.json format** (includes result summaries so nothing is lost):
+**board/archive.json 格式**：
 ```json
 {
-  "last_updated": "2026-04-17T11:00:00",
-  "archived": [
-    {
-      "id": "T001",
-      "title": "Add user authentication",
-      "status": "completed",
-      "summary": "Added JWT auth with login/logout/me endpoints",
-      "completed_by": "executor",
-      "completed_at": "2026-04-17T10:30:00",
-      "archived_at": "2026-04-17T11:00:00"
-    }
+  "last_updated": "...",
+  "archived_tasks": [
+    {"id": "T001", "title": "...", "result_status": "completed", "archived_at": "..."}
   ]
 }
 ```
 
-**Who maintains it**: The executor, as part of the result-submission workflow. The planner can also trigger a cleanup.
+## 新 Agent 加入
 
-### Chat Trimming
+**不需要自注册**。流程：
+1. 读 `PROTOCOL.md` 了解规则
+2. 人类指派身份（"你是 executor-2"）
+3. 扫 `tasks.json` 过滤 `assignee == 你的名字` 或 `assignee == "all"`
+4. 没活干就闲着，规划者分派任务时再行动
 
-Same principle: keep chat.md under 30 entries. Older entries go to `chronicles/chat-archive-{YYYY-MM-DD}.md`.
+**多个 executor 并行**：规划者颁任务时 `assignee` 明确指定 `executor-1` / `executor-2` 等。身份由人类口头指派。
 
-### Inbox Pruning
+## 自治原则
 
-Inboxes grow without bound by design -- they're the agent's personal log. If an inbox gets too large (>100 entries), the agent can self-prune by moving old entries to chronicles.
+| 类型 | 做法 |
+|---|---|
+| 顺手能做的（git commit、改 typo） | 直接做，不颁任务 |
+| 小决策（命名、文件位置） | 自己定 |
+| 长耗时任务（重构、调研） | 颁任务走正式流程 |
+| 需要外部信息 | 交给有搜索能力的 agent |
 
-## Workflows
+判断标准：**token 消耗和上下文占用**。几行能搞定的不走任务流程。
 
-### Autonomy Principle
+## 任务描述纪律
 
-**Small things: do them directly. Big things: use the task flow.**
+给执行者写任务时，**只写需求和验收标准，不教如何实现**。
 
-| Type | Example | Action |
-|------|---------|--------|
-| Trivial | git commit, save file, typo fix | Do it, no task needed |
-| Small decision | naming, file location, tool choice | Decide yourself |
-| Real task | refactor module, write tests, research | Create formal task |
-| External info | docs lookup, web search | Delegate to capable agent |
+1. **只写"要什么"+"如何验收"，不写"如何做"**
+2. **每个专业词补白话解释**，别假设执行者懂术语
+3. **关键约束举具体例子**，不用形容词
+4. **写完自审**：哪些句子是在"教他怎么干"？全删
+5. **少即是多**：150 字说清的不写 1500 字
 
-### Planner
+## 三层分离
 
-1. Read `results.json` to see completed work
-2. Read `inbox/planner.md` for requests and issues
-3. Write tasks to `board/tasks.json`
-4. Review results and issue follow-up tasks
+6. **实现任务验收只验"跑通"**，不验质量指标
+7. **复杂素材放 `materials/{task_id}/`**，不塞任务描述
+8. **测试任务和实现任务分开颁**：实现任务验"跑通"，测试任务验"达标"
 
-### Executor
+## 工作流
 
-1. Read `board/tasks.json`, find tasks assigned to you
-2. Check `results.json` -- skip tasks that already have a result entry
-3. Execute the task
-4. Append your result to `results.json`
-5. Archive old tasks/results to `board/archive.json` when active items exceed ~10
-6. If stuck, write `inbox/planner.md`
+### 规划者
+1. 扫 `results/` 看完成情况
+2. 颁布新任务到 `tasks.json`
+3. 处理 rejected/blocked 的 result
+4. 定期归档（超 15 条顺手做）
 
-### Chronicler
+### 执行者
+1. 扫 `tasks.json` 过滤 `assignee == 我 || "all"`
+2. 跳过已有 `results/{id}.json` 的任务
+3. **审题**（执行前必须过）：
+   - 理解任务要改什么文件/模块
+   - 快速确认这些文件/模块的当前状态（列是否已加、函数是否已有等）
+   - 如果任务要加的东西已存在、描述有歧义、或与项目方向矛盾 → 直接 `status: "rejected"` + reason
+   - 通过 → 进入对齐
+4. **对齐汇报**（审题通过后、执行前必须做）：
+   - 直接向**用户**口头汇报，包含：
+     - 任务理解：一句话说明你认为要做什么
+     - 影响范围：会动哪些文件/模块，对现有功能的潜在影响
+     - 具体问题：发现的歧义、风险、与现有代码的冲突
+   - 等用户确认后才动手执行
+   - 用户说"做"→ 继续；用户调整方向→按新方向来；用户说"不做"→ reject
+5. 执行任务
+6. 写 `results/{id}.json`（或广播时 `results/{id}-{agent}.json`）
+7. 有疑问 → `status: "rejected"` + reason/suggestion
+8. 卡住 → `status: "blocked"` + reason
 
-1. Read `results.json` to understand latest work
-2. Read `inbox/chronicler.md` for recording requests
-3. Write daily records to `chronicles/YYYY-MM-DD.md`
+### 史官
+1. 扫 `results/` 了解产出
+2. 写 `chronicles/YYYY-MM-DD.md` 记录历史
+3. 不参与通信主流程
 
-### New Agent
+## 人工命令
 
-1. Read `PROTOCOL.md`
-2. Read `config/agents.json`
-3. Append your identity to `config/agents.json`
-4. Start working in your role
+| 命令 | 含义 |
+|---|---|
+| `/check` | 按身份执行对应检查流程 |
+| `/report` | 输出当前任务状态总表 |
 
-## Task Description Discipline
+## 协议版本
 
-When writing tasks for executors:
-
-1. **Only write requirements and acceptance criteria, not implementation steps**
-   - Specify WHAT is needed and HOW to verify correctness
-   - Let the executor decide HOW to achieve it
-
-2. **Explain or avoid jargon**
-   - If you must use a technical term, add a plain-language explanation
-
-3. **Show concrete examples for critical constraints, not adjectives**
-   - Ambiguous rules lead to misinterpretation
-   - Give 1-2 concrete examples instead of describing in abstract terms
-
-4. **After writing, delete every sentence that teaches HOW to do the work**
-   - What remains should be: requirements + acceptance criteria
-
-5. **Less is more**
-   - If 150 words suffice, don't write 1500
-   - Let the executor ask questions rather than pre-emptively addressing every edge case
-
-## Three-Layer Separation
-
-6. **Implementation tasks verify "it works", not "it's good"**
-   - Acceptance: flow runs, fields have values, no errors
-   - Quality gates like "accuracy >= 85%" belong in separate test tasks
-
-7. **Complex materials go in folders, not task descriptions**
-   - Put prompts, examples, data, rubrics in `materials/{task_id}/`
-   - Task description references the folder, not the contents
-   - Materials can be iterated independently without changing the task
-
-8. **Test tasks and implementation tasks are separate**
-   - Implementation: build it (acceptance: "runs without errors")
-   - Test: validate quality (acceptance: "meets specific metrics")
-   - These are fundamentally different kinds of work
-
-## Trigger Mechanisms
-
-Agents decide how to poll for changes:
-
-- Claude Code: `/loop 5m /check` for periodic checking
-- Other systems: file watchers, cron jobs, manual triggers
-- No polling also works: user triggers manually when needed
-
-Recommended human commands:
-
-| Command | Action |
-|---------|--------|
-| `/check` | Read bridge state and report (role-specific) |
-| `/report` | Output full task status table |
-| `/log` | Append current work summary to chat.md |
-
-## Protocol Updates
-
-When the protocol changes:
-1. Update `PROTOCOL.md`
-2. Announce changes in `chat.md`
-3. Write to each affected agent's inbox
-
-Agents sync on next `/check`.
-
-## Protocol Versions
-
-- v0.1 -- Initial version, single results.json
-- v0.2 -- Results split to per-task files, removed status field, generalized identity
-- v0.3 -- Added global bridge level, dynamic discovery
-- v0.4 -- Added autonomy principle, rejected status, update notification
-- v0.5 -- Added task description discipline (5 rules)
-- v0.6 -- Added three-layer separation (3 rules)
-- v0.7 -- Added housekeeping: task archiving, chat rolling window, inbox pruning
-- v0.8 -- Results consolidated to single results.json (one read, not N)
+- v0.1-v0.6 — 见 `chronicles/legacy/`
+- v0.7 — housekeeping（归档/滚动窗口/收件箱裁剪）
+- v0.8 — results 合并到单文件（后回退）
+- v0.9 — 极简化：取消 chat.md / inbox / agents.json，所有通信走任务
+- v0.9.1 — 执行者加审题步骤：执行前必须确认任务前提是否存在，已存在则 reject
+- v0.9.2 — 执行者加对齐汇报：审题通过后向规划者口头汇报理解和影响，确认后再执行
